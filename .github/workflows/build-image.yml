@@ -1,0 +1,44 @@
+name: Build hello-world bot image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}:poc-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure Podman is installed
+        run: |
+          if ! command -v podman >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y podman
+          fi
+          podman --version
+      - name: Build image
+        run: podman build --platform linux/amd64 -t "$IMAGE" .
+      - name: Smoke test container
+        run: |
+          podman run --rm -d --name hello-world-bot -p 127.0.0.1:5000:5000 "$IMAGE"
+          trap 'podman stop hello-world-bot' EXIT
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:5000/v2/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS -H 'Content-Type: application/json' \
+            -d '{"message":"anything"}' http://127.0.0.1:5000/v2/chat \
+            | python3 -c 'import json, sys; assert json.load(sys.stdin)["content"] == "hello world"'
+      - name: Publish image to GHCR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GITHUB_TOKEN" | podman login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          podman push "$IMAGE"
