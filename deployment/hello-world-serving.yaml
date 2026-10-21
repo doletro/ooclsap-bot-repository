@@ -3,8 +3,8 @@ kind: ServingTemplate
 metadata:
   name: hello-world-bot
   annotations:
-    scenarios.ai.sap.com/name: "Hello World Bot"
-    executables.ai.sap.com/name: "Hello World Bot Serving"
+    scenarios.ai.sap.com/name: "hello-world-bot"
+    executables.ai.sap.com/name: "hello-world-bot-serving"
   labels:
     scenarios.ai.sap.com/id: hello-world-bot
     ai.sap.com/version: "1.0.0"
